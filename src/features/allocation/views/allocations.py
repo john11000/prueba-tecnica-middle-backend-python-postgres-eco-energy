@@ -2,7 +2,6 @@ from sqlalchemy import text
 
 from src.features.allocation.service_layer import unit_of_work
 
-
 def allocations(orderid: str, uow: unit_of_work.SqlAlchemyUnitOfWork):
     with uow:
         results = uow.session.execute(

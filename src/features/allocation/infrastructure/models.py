@@ -1,54 +1,74 @@
-from sqlalchemy import Table, Column, Integer, String, Date, ForeignKey, event
+from sqlalchemy import (
+    Table, Column, Integer, Float, ForeignKey, String, DateTime, CheckConstraint, UniqueConstraint, event, ForeignKeyConstraint
+)
 from sqlalchemy.orm import registry
-
 from src.features.allocation.domain import model
 
-
+# Registrar el mapper
 mapper_registry = registry()
 
-order_lines = Table(
-    "order_lines",
+# Table injection
+injection = Table(
+    "injection",
     mapper_registry.metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("sku", String(255)),
-    Column("qty", Integer, nullable=False),
-    Column("orderid", String(255)),
+    Column("id_record", Integer, primary_key=True, autoincrement=True),
+    Column("value", Float, nullable=False)
 )
 
-products = Table(
-    "products",
+# Table consumption
+consumption = Table(
+    "consumption",
     mapper_registry.metadata,
-    Column("sku", String(255), primary_key=True),
-    Column("version_number", Integer, nullable=False, server_default="0"),
+    Column("id_record", Integer, primary_key=True, autoincrement=True),
+    Column("value", Float, nullable=False)
 )
 
-batches = Table(
-    "batches",
+# Table xm_data_hourly_per_agent
+xm_data_hourly_per_agent = Table(
+    "xm_data_hourly_per_agent",
     mapper_registry.metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("reference", String(255)),
-    Column("sku", ForeignKey("products.sku")),
-    Column("_purchased_quantity", Integer, nullable=False),
-    Column("eta", Date, nullable=True),
+    Column("value", Float, nullable=False),
+    Column("record_timestamp", DateTime, primary_key=True)
 )
 
-allocations = Table(
-    "allocations",
+# Table services
+services = Table(
+    "services",
     mapper_registry.metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("orderline_id", ForeignKey("order_lines.id")),
-    Column("batch_id", ForeignKey("batches.id")),
+    Column("id_service", Integer, primary_key=True, autoincrement=True),
+    Column("id_market", Integer, nullable=False),
+    Column("cdi", Integer, nullable=False),
+    Column("voltage_level", Integer, nullable=False),
+    CheckConstraint('voltage_level IN (1, 2, 3, 4)'),  # Limitar valores permitidos
+    UniqueConstraint("id_market", "cdi", "voltage_level")  # Clave única compuesta
 )
 
-allocations_view = Table(
-    "allocations_view",
+# Table records
+records = Table(
+    "records",
     mapper_registry.metadata,
-    Column("orderid", String(255)),
-    Column("sku", String(255)),
-    Column("batchref", String(255)),
+    Column("id_record", Integer, primary_key=True, autoincrement=True),
+    Column("id_service", Integer, ForeignKey("services.id_service"), nullable=False),
+    Column("record_timestamp", DateTime, ForeignKey("xm_data_hourly_per_agent.record_timestamp"), nullable=False)
 )
 
-
-@event.listens_for(model.Product, "load")
-def receive_load(product, _):
-    product.events = []
+# Table tariffs
+tariffs = Table(
+    "tariffs",
+    mapper_registry.metadata,
+    Column("id_market", Integer, primary_key=True),
+    Column("cdi", Integer, primary_key=True),
+    Column("voltage_level", Integer, primary_key=True),
+    Column("G", Float),
+    Column("T", Float),
+    Column("D", Float),
+    Column("R", Float),
+    Column("C", Float),
+    Column("P", Float),
+    Column("CU", Float),
+    # Referencia de claves compuestas a la tabla services
+    ForeignKeyConstraint(
+        ["id_market", "cdi", "voltage_level"],
+        ["services.id_market", "services.cdi", "services.voltage_level"]
+    )
+)

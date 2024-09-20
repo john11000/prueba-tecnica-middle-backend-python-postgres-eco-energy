@@ -1,9 +1,9 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 
 from src.features.allocation import views
-from src.features.allocation.api.schema import AllocationItem, Message
+from src.features.allocation.api.schema import Message
 from src.features.allocation.service_layer import unit_of_work
 
 
@@ -16,16 +16,3 @@ def hello() -> Message:
     results = views.get_test(uow)
     print(results)
     return {"message": "Hello, World!", "data": results}
-
-@view_router.get("/allocations/{orderid}", status_code=200)
-def allocations(orderid: str) -> List[AllocationItem]:
-    uow = unit_of_work.SqlAlchemyUnitOfWork()
-    results = views.allocations(orderid, uow)
-
-    if not results:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Order {orderid} not found"
-        )
-
-    return results

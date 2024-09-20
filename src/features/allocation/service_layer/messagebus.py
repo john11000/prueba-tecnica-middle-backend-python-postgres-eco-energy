@@ -53,7 +53,7 @@ def handle_command(
     try:
         handler = COMMAND_HANDLERS[type(command)]
         result = handler(command, uow=uow)
-        queue.extend(uow.collect_new_events())
+        # queue.extend(uow.collect_new_events())
         return result
     except Exception:
         logger.exception(f"Exception handling command {command}")
@@ -61,19 +61,9 @@ def handle_command(
 
 
 EVENT_HANDLERS = {
-    events.Allocated: [
-        # handlers.publish_allocated_event,
-        handlers.add_allocation_to_read_model,
-    ],
-    events.Deallocated: [
-        handlers.remove_allocation_from_read_model,
-        handlers.reallocate,
-    ],
-    events.OutOfStock: [handlers.send_out_of_stock_notification],
+    # events.OutOfStock: [handlers.send_out_of_stock_notification],
 }
 
 COMMAND_HANDLERS = {
-    commands.Allocate: handlers.allocate,
-    commands.CreateBatch: handlers.add_batch,
-    commands.ChangeBatchQuantity: handlers.change_batch_quantity,
+    commands.GetInvoice: handlers.get_invoice,
 }

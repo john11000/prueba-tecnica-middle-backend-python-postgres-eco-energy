@@ -9,7 +9,6 @@ from src.features.allocation.infrastructure import repository
 
 
 class AbstractUnitOfWork(ABC):
-    products: repository.AbstractRepository
 
     def __enter__(self) -> AbstractUnitOfWork:
         return self
@@ -21,9 +20,7 @@ class AbstractUnitOfWork(ABC):
         self._commit()
 
     def collect_new_events(self):
-        for product in self.products.seen:
-            while product.events:
-                yield product.events.pop(0)
+        pass
 
     @abstractmethod
     def _commit(self):
@@ -48,7 +45,6 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 
     def __enter__(self):
         self.session = self.session_factory()  # type: Session
-        self.products = repository.SqlAlchemyRepository(self.session)
         return super().__enter__()
 
     def __exit__(self, *args):
