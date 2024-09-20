@@ -10,3 +10,11 @@ def allocations(orderid: str, uow: unit_of_work.SqlAlchemyUnitOfWork):
             dict(orderid=orderid),
         )
     return results
+
+def get_test(uow: unit_of_work.SqlAlchemyUnitOfWork):
+    with uow:
+        results = uow.session.execute(
+            text("SELECT * FROM prueba"),
+        )
+    data = [dict(row._mapping) for row in results]
+    return data

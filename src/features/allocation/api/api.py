@@ -10,6 +10,9 @@ from src.features.allocation.domain.exceptions import InvalidSku, OutOfStock
 api_router = APIRouter()
 api_router.include_router(view_router)
 
+@api_router.get('/prueba', status_code=200)
+def prueba():
+    return {"message": "Hello, World!"}
 
 @api_router.post("/add_batch", status_code=status.HTTP_201_CREATED)
 def add_batch(item: BatchItem):

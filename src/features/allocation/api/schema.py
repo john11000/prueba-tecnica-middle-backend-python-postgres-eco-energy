@@ -17,3 +17,6 @@ class OrderItem(BaseModel):
 class AllocationItem(BaseModel):
     sku: str = Field(..., example="SMALL-TABLE")
     batchref: str = Field(..., example="batch-001")
+
+class Message(BaseModel):
+    message: str = Field(..., example="hello world")
