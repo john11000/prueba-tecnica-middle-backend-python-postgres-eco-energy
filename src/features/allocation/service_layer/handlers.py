@@ -162,10 +162,10 @@ def get_system_load(uow: unit_of_work.SqlAlchemyUnitOfWork):
         """)
         return session.execute(load_query).fetchall()
 
-def calculate_independent_concept(concept: str, cmd, uow: unit_of_work.SqlAlchemyUnitOfWork):
+def calculate_independent_concept(cmd: commands.CalculateInvoiceByConcept, uow: unit_of_work.SqlAlchemyUnitOfWork):
     with uow:
         session = uow.session
-
+        concept = cmd.concept
         if concept == 'EA':
             return calculate_invoice(cmd, uow)['EA']
         elif concept == 'EC':

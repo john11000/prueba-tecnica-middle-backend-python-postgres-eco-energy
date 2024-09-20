@@ -66,4 +66,5 @@ EVENT_HANDLERS = {
 
 COMMAND_HANDLERS = {
     commands.GetInvoice: handlers.calculate_invoice,
+    commands.CalculateInvoiceByConcept: handlers.calculate_independent_concept,
 }

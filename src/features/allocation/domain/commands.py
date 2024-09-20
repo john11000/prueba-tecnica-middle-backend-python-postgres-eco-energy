@@ -9,3 +9,9 @@ class Command:
 class GetInvoice(Command):
     client_id: int
     month: int
+
+@dataclass
+class CalculateInvoiceByConcept(Command):
+    client_id: int
+    month: int
+    concept: str
