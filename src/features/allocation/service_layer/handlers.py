@@ -12,14 +12,16 @@ def get_tariff_for_service(session, id_market, cdi, voltage_level):
     tariff_query = text("""
         SELECT "CU", "C"
         FROM tariffs
-        WHERE id_market = :id_market AND cdi = :cdi AND voltage_level = :voltage_level
+        WHERE id_market = :id_market AND voltage_level = :voltage_level
+        """ + ("""AND cdi = :cdi""" if voltage_level not in (2, 3) else "") + """
         LIMIT 1
     """)
-    result = session.execute(tariff_query, {
-        'id_market': id_market,
-        'cdi': cdi,
-        'voltage_level': voltage_level
-    }).fetchone()
+    
+    params = {'id_market': id_market, 'voltage_level': voltage_level}
+    if voltage_level not in (2, 3):
+        params['cdi'] = cdi
+
+    result = session.execute(tariff_query, params).fetchone()
 
     if result:
         return {'CU': result.CU, 'C': result.C}
@@ -52,11 +54,16 @@ def get_consumption(session, id_service, start_date=None, end_date=None):
     if conditions:
         query += " AND " + " AND ".join(conditions)
 
-    return session.execute(text(query), {
-        'id_service': id_service,
-        'start_date': start_date,
-        'end_date': end_date
-    }).scalar()
+    params = {
+        'id_service': id_service
+    }
+    if start_date:
+        params['start_date'] = start_date
+    if end_date:
+        params['end_date'] = end_date
+
+    return session.execute(text(query), params).scalar()
+
 
 def get_injection_sum(session, id_service, start_date=None, end_date=None):
     query = text("""
@@ -66,24 +73,26 @@ def get_injection_sum(session, id_service, start_date=None, end_date=None):
             SELECT id_record
             FROM records
             WHERE id_service = :id_service
-        )
     """)
-    
+
     conditions = []
 
     if start_date:
-        conditions.append("r.record_timestamp >= :start_date")
+        conditions.append("record_timestamp >= :start_date")
     if end_date:
-        conditions.append("r.record_timestamp <= :end_date")
+        conditions.append("record_timestamp <= :end_date")
     
     if conditions:
-        query += " AND " + " AND ".join(conditions)
+        query = text(str(query) + " AND " + " AND ".join(conditions) + ")")
 
-    return session.execute(query, {
-        'id_service': id_service,
-        'start_date': start_date,
-        'end_date': end_date
-    }).scalar()
+    params = {'id_service': id_service}
+    if start_date:
+        params['start_date'] = start_date
+    if end_date:
+        params['end_date'] = end_date
+
+    return session.execute(query, params).scalar()
+
 
 def calculate_ee2_value(session, ee2_sum, start_date, end_date):
     if ee2_sum > 0:
