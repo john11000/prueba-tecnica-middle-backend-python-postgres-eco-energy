@@ -14,15 +14,14 @@ view_router = APIRouter()
 """GET /client-statistics/{client_id}: Proporciona estadísticas de consumo e
 inyección para un cliente"""
 @view_router.get("/client-statistics/{client_id}")
-def client_statistics(client_id: int) -> ClientStatistics | Message:
+def client_statistics(client_id: int):
     try:
         uow = unit_of_work.SqlAlchemyUnitOfWork()
         cmd = commands.GetClientStatistics(client_id)
         results = messagebus.handle(cmd, uow)
         return {
             "client_id": client_id,
-            "total_consumed": results.consumption,
-            "total_injected": results.injection
+            "results": results,
         }
     except Exception as e:
         return {"message": str(e)}
