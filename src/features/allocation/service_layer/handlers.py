@@ -106,12 +106,24 @@ def get_invoice(cmd: commands.GetInvoice, uow: unit_of_work.SqlAlchemyUnitOfWork
                 if remaining_ee2 > 0:
                     hourly_limit = hour.value
                     hourly_value = min(remaining_ee2, hourly_limit)
-                    ee2_value += hourly_value * hourly_limit  # Verifica que este cálculo sea el deseado
+                    ee2_value += hourly_value * hourly_limit
                     remaining_ee2 -= hourly_value
 
         return {
-            "Energía Activa (EA)": energy_active,
-            "Comercialización de Excedentes de Energía (EC)": energy_commercialization,
-            "Excedentes de Energía tipo 1 (EE1)": ee1_value,
-            "Excedentes de Energía tipo 2 (EE2)": ee2_value,
+            "EA": {
+                "concept":"Energía Activa (EA)",
+                "value": energy_active
+            },
+            "EC": {
+                "concept":"Comercialización de Excedentes de Energía (EC)",
+                "value": energy_commercialization
+            },
+            "EE1": {
+                "concept":"Excedentes de Energía tipo 1 (EE1)",
+                "value": ee1_value
+            },
+            "EE2": {
+                "concept":"Excedentes de Energía tipo 2 (EE2)",
+                "value": ee2_value
+            },
         }

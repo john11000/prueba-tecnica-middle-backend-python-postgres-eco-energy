@@ -39,8 +39,8 @@ services = Table(
     Column("id_market", Integer, nullable=False),
     Column("cdi", Integer, nullable=False),
     Column("voltage_level", Integer, nullable=False),
-    CheckConstraint('voltage_level IN (1, 2, 3, 4)'),  # Limitar valores permitidos
-    UniqueConstraint("id_market", "cdi", "voltage_level")  # Clave única compuesta
+    CheckConstraint('voltage_level IN (1, 2, 3, 4)'),
+    UniqueConstraint("id_market", "cdi", "voltage_level")
 )
 
 # Table records
@@ -66,7 +66,6 @@ tariffs = Table(
     Column("C", Float),
     Column("P", Float),
     Column("CU", Float),
-    # Referencia de claves compuestas a la tabla services
     ForeignKeyConstraint(
         ["id_market", "cdi", "voltage_level"],
         ["services.id_market", "services.cdi", "services.voltage_level"]

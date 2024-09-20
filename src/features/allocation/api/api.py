@@ -14,4 +14,4 @@ def calculate_invoice(client_id: int, month: int):
     uow = unit_of_work.SqlAlchemyUnitOfWork()
     cmd = commands.GetInvoice(client_id, month)
     invoice = messagebus.handle(cmd, uow)
-    return { "client_id": client_id, "month": month, "response": invoice}
+    return { "client_id": client_id, "month": month, "invoice": invoice}
