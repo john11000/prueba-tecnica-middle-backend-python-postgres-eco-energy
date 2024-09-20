@@ -15,3 +15,7 @@ class CalculateInvoiceByConcept(Command):
     client_id: int
     month: int
     concept: str
+
+@dataclass
+class GetClientStatistics(Command):
+    client_id: int

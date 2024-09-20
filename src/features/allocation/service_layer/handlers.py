@@ -2,6 +2,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 from sqlalchemy import text
+from src.features.allocation.domain.exceptions import InvalidValueError
 
 if TYPE_CHECKING:
     from . import unit_of_work
@@ -23,7 +24,7 @@ def get_tariff_for_service(session, id_market, cdi, voltage_level):
     if result:
         return {'CU': result.CU, 'C': result.C}
     else:
-        raise ValueError("No se encontraron tarifas para el servicio especificado.")
+        raise InvalidValueError("No se encontraron tarifas para el servicio especificado.")
 
 def get_service(session, cdi):
     service_query = text("""
@@ -33,30 +34,52 @@ def get_service(session, cdi):
     """)
     return session.execute(service_query, {'cdi': cdi}).fetchone()
 
-def get_consumption(session, id_service, start_date, end_date):
-    consumption_query = text("""
+def get_consumption(session, id_service, start_date=None, end_date=None):
+    query = """
         SELECT COALESCE(SUM(c.value), 0)
         FROM records r
         JOIN consumption c ON r.id_record = c.id_record
-        WHERE r.id_service = :id_service AND r.record_timestamp BETWEEN :start_date AND :end_date
-    """)
-    return session.execute(consumption_query, {
+        WHERE r.id_service = :id_service
+    """
+    
+    conditions = []
+
+    if start_date:
+        conditions.append("r.record_timestamp >= :start_date")
+    if end_date:
+        conditions.append("r.record_timestamp <= :end_date")
+    
+    if conditions:
+        query += " AND " + " AND ".join(conditions)
+
+    return session.execute(text(query), {
         'id_service': id_service,
         'start_date': start_date,
         'end_date': end_date
     }).scalar()
 
-def get_injection_sum(session, id_service, start_date, end_date):
-    injection_query = text("""
+def get_injection_sum(session, id_service, start_date=None, end_date=None):
+    query = text("""
         SELECT COALESCE(SUM(value), 0)
         FROM injection
         WHERE id_record IN (
             SELECT id_record
             FROM records
-            WHERE id_service = :id_service AND record_timestamp BETWEEN :start_date AND :end_date
+            WHERE id_service = :id_service
         )
     """)
-    return session.execute(injection_query, {
+    
+    conditions = []
+
+    if start_date:
+        conditions.append("r.record_timestamp >= :start_date")
+    if end_date:
+        conditions.append("r.record_timestamp <= :end_date")
+    
+    if conditions:
+        query += " AND " + " AND ".join(conditions)
+
+    return session.execute(query, {
         'id_service': id_service,
         'start_date': start_date,
         'end_date': end_date
@@ -96,7 +119,7 @@ def calculate_invoice(cmd: commands.GetInvoice, uow: unit_of_work.SqlAlchemyUnit
 
         service = get_service(session, cdi)
         if not service:
-            raise ValueError("No se encontró el servicio para el cliente especificado.")
+            raise InvalidValueError("No se encontró el servicio para el cliente especificado.")
 
         consumption_sum = get_consumption(session, service.id_service, start_date, end_date)
         tariffs = get_tariff_for_service(session, service.id_market, cdi, service.voltage_level)
@@ -135,16 +158,13 @@ def get_client_statistics(cmd: commands.GetClientStatistics, uow: unit_of_work.S
         session = uow.session
 
         cdi = cmd.client_id
-        month = datetime(cmd.month // 100, cmd.month % 100, 1)
-        start_date = month.replace(day=1)
-        end_date = (month.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
         service = get_service(session, cdi)
         if not service:
-            raise ValueError("No se encontró el servicio para el cliente especificado.")
+            raise InvalidValueError("No se encontró el servicio para el cliente especificado.")
 
-        consumption_sum = get_consumption(session, service.id_service, start_date, end_date)
-        injection_sum = get_injection_sum(session, service.id_service, start_date, end_date)
+        consumption_sum = get_consumption(session, service.id_service)
+        injection_sum = get_injection_sum(session, service.id_service)
 
         return {
             "consumption": consumption_sum,
@@ -175,4 +195,4 @@ def calculate_independent_concept(cmd: commands.CalculateInvoiceByConcept, uow: 
         elif concept == 'EE2':
             return calculate_invoice(cmd, uow)['EE2']
         else:
-            raise ValueError("Concepto no válido.")
+            raise InvalidValueError("Concepto no válido.")
