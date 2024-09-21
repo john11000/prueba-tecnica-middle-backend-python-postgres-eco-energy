@@ -34,14 +34,21 @@ def get_service(session: Session, cdi: int):
     """)
     return session.execute(service_query, {'cdi': cdi}).fetchone()
 
-def get_consumption(session: Session, id_service: int, start_date=None, end_date=None):
-    query = """
-        SELECT COALESCE(SUM(c.value), 0)
+def get_consumption(session: Session, id_service: int, start_date=None, end_date=None, showDetails=False):
+    base_query = """
+        SELECT COALESCE(SUM(c.value), 0) AS total_consumption
         FROM records r
         JOIN consumption c ON r.id_record = c.id_record
         WHERE r.id_service = :id_service
     """
     
+    details_query = """
+        SELECT c.id_record, r.id_service, c.id_consumption, r.record_timestamp, c.value
+        FROM records r
+        JOIN consumption c ON r.id_record = c.id_record
+        WHERE r.id_service = :id_service
+    """
+
     conditions = []
 
     if start_date:
@@ -50,7 +57,8 @@ def get_consumption(session: Session, id_service: int, start_date=None, end_date
         conditions.append("r.record_timestamp <= :end_date")
     
     if conditions:
-        query += " AND " + " AND ".join(conditions)
+        base_query += " AND " + " AND ".join(conditions)
+        details_query += " AND " + " AND ".join(conditions)
 
     params = {'id_service': id_service}
     if start_date:
@@ -58,25 +66,53 @@ def get_consumption(session: Session, id_service: int, start_date=None, end_date
     if end_date:
         params['end_date'] = end_date
 
-    return session.execute(text(query), params).scalar()
+    total_consumption = session.execute(text(base_query), params).scalar()
 
-def get_injection_sum(session: Session, id_service: int, start_date=None, end_date=None):
-    query = """
+    if showDetails:
+        details = session.execute(text(details_query), params).fetchall()
+        return {
+            "total_consumption": total_consumption,
+            "details": [
+                {
+                    "id_record": row.id_record,
+                    "id_service": row.id_service,
+                    "id_consumption": row.id_consumption,
+                    "record_timestamp": row.record_timestamp,
+                    "value": row.value
+                } for row in details
+            ]
+        }
+
+    return {
+        "total_consumption": total_consumption
+    }
+
+
+def get_injection_sum(session: Session, id_service: int, start_date=None, end_date=None, showDetails=False):
+    base_query = """
         SELECT COALESCE(SUM(i.value), 0) AS total_injection
+        FROM records r
+        JOIN injection i ON r.id_record = i.id_record
+        WHERE r.id_service = :id_service
+    """
+    
+    details_query = """
+        SELECT i.id_record, r.id_service, i.id_injection, r.record_timestamp, i.value
         FROM records r
         JOIN injection i ON r.id_record = i.id_record
         WHERE r.id_service = :id_service
     """
 
     conditions = []
-    
+
     if start_date:
         conditions.append("r.record_timestamp >= :start_date")
     if end_date:
         conditions.append("r.record_timestamp <= :end_date")
     
     if conditions:
-        query += " AND " + " AND ".join(conditions)
+        base_query += " AND " + " AND ".join(conditions)
+        details_query += " AND " + " AND ".join(conditions)
 
     params = {'id_service': id_service}
     if start_date:
@@ -84,7 +120,26 @@ def get_injection_sum(session: Session, id_service: int, start_date=None, end_da
     if end_date:
         params['end_date'] = end_date
 
-    return session.execute(text(query), params).scalar()
+    total_injection = session.execute(text(base_query), params).scalar()
+
+    if showDetails:
+        details = session.execute(text(details_query), params).fetchall()
+        return {
+            "total_injection": total_injection,
+            "details": [
+                {
+                    "id_record": row.id_record,
+                    "id_service": row.id_service,
+                    "id_injection": row.id_injection,
+                    "record_timestamp": row.record_timestamp,
+                    "value": row.value
+                } for row in details
+            ]
+        }
+
+    return {
+        "total_injection": total_injection
+    }
 
 def calculate_ee2_value(session: Session, ee2_sum: float, start_date: datetime, end_date: datetime) -> float:
     if ee2_sum > 0:
@@ -124,9 +179,10 @@ def calculate_invoice(cmd: commands.GetInvoice, uow: unit_of_work.SqlAlchemyUnit
 
             tariffs = get_tariff_for_service(session, service.id_market, cdi, service.voltage_level)
 
-            consumption_sum = get_consumption(session, service.id_service, start_date, end_date)
-            injection_sum = get_injection_sum(session, service.id_service, start_date, end_date)
-
+            consumption = get_consumption(session, service.id_service, start_date, end_date)
+            injection = get_injection_sum(session, service.id_service, start_date, end_date)
+            consumption_sum = consumption['total_consumption']
+            injection_sum = injection['total_injection']
             ea = calculate_energy_active(consumption_sum, tariffs)
             ec = calculate_energy_commercialization(injection_sum, tariffs)
             ee1 = calculate_ee1(consumption_sum, injection_sum, tariffs)
@@ -185,12 +241,13 @@ def get_client_statistics(cmd: commands.GetClientStatistics, uow: unit_of_work.S
         session = uow.session
         try:
             cdi = cmd.client_id
+            show_details = cmd.show_details
             service = get_service(session, cdi)
             if not service:
                 raise InvalidValueError("No se encontró el servicio para el cliente especificado.")
 
-            consumption_sum = get_consumption(session, service.id_service)
-            injection_sum = get_injection_sum(session, service.id_service)
+            consumption_sum = get_consumption(session, service.id_service ,showDetails=show_details)
+            injection_sum = get_injection_sum(session, service.id_service, showDetails=show_details)
 
             uow.commit()
             return {
@@ -216,9 +273,10 @@ def calculate_independent_concept(cmd: commands.CalculateInvoiceByConcept, uow: 
 
         tariffs = get_tariff_for_service(session, service.id_market, cdi, service.voltage_level)
 
-        consumption_sum = get_consumption(session, service.id_service, start_date, end_date)
-        injection_sum = get_injection_sum(session, service.id_service, start_date, end_date)
-
+        consumption = get_consumption(session, service.id_service, start_date, end_date)
+        injection = get_injection_sum(session, service.id_service, start_date, end_date)
+        consumption_sum = consumption['total_consumption']
+        injection_sum = injection['total_injection']
         concept = cmd.concept
 
         if concept == 'EA':

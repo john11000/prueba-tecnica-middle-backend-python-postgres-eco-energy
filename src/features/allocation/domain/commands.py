@@ -25,6 +25,7 @@ class CalculateInvoiceByConcept(Command):
 @dataclass
 class GetClientStatistics(Command):
     client_id: int
+    show_details: bool = False
 
 @dataclass
 class GetSystemLoad(Command):

@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from src.features.allocation import views
 from src.features.allocation.api.schema import Message, ClientStatistics
@@ -15,9 +15,9 @@ uow = unit_of_work.SqlAlchemyUnitOfWork()
 """GET /client-statistics/{client_id}: Proporciona estadísticas de consumo e
 inyección para un cliente"""
 @view_router.get("/client-statistics/{client_id}")
-def client_statistics(client_id: int):
+def client_statistics(client_id: int, show_details: bool = Query(False)):
     try:
-        cmd = commands.GetClientStatistics(client_id)
+        cmd = commands.GetClientStatistics(client_id, show_details)
         results = messagebus.handle(cmd, uow)
         return {
             "client_id": client_id,
