@@ -66,24 +66,22 @@ def get_consumption(session, id_service, start_date=None, end_date=None):
 
 
 def get_injection_sum(session, id_service, start_date=None, end_date=None):
-    query = text("""
-        SELECT COALESCE(SUM(value), 0)
-        FROM injection
-        WHERE id_record IN (
-            SELECT id_record
-            FROM records
-            WHERE id_service = :id_service
-    """)
+    query = """
+        SELECT COALESCE(SUM(i.value), 0) AS total_injection
+        FROM records r
+        JOIN injection i ON r.id_record = i.id_record
+        WHERE r.id_service = :id_service
+    """
 
     conditions = []
-
+    
     if start_date:
-        conditions.append("record_timestamp >= :start_date")
+        conditions.append("r.record_timestamp >= :start_date")
     if end_date:
-        conditions.append("record_timestamp <= :end_date")
+        conditions.append("r.record_timestamp <= :end_date")
     
     if conditions:
-        query = text(str(query) + " AND " + " AND ".join(conditions) + ")")
+        query += " AND " + " AND ".join(conditions)
 
     params = {'id_service': id_service}
     if start_date:
@@ -91,7 +89,7 @@ def get_injection_sum(session, id_service, start_date=None, end_date=None):
     if end_date:
         params['end_date'] = end_date
 
-    return session.execute(query, params).scalar()
+    return session.execute(text(query), params).scalar()
 
 
 def calculate_ee2_value(session, ee2_sum, start_date, end_date):
