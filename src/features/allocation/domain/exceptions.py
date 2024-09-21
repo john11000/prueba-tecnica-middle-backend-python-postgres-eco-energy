@@ -2,7 +2,7 @@
 
 class InvalidValueError(Exception):
     """Invalid value exption is raised when has no found the db record."""
-    message = "{msg}"
+    message = "Error: {msg}"
 
     def __init__(self, msg: str):
         self.msg = msg

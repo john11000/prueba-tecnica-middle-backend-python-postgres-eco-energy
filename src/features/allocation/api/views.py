@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 
 from src.features.allocation import views
 from src.features.allocation.api.schema import Message, ClientStatistics
@@ -24,7 +24,7 @@ def client_statistics(client_id: int, show_details: bool = Query(False)):
             "results": results,
         }
     except Exception as e:
-        return {"message": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 """
@@ -33,5 +33,8 @@ de consumo
 """
 @view_router.get("/system-load")
 def system_load():
-    results = views.system_load(uow)
-    return results
+    try: 
+        results = views.system_load(uow)
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
