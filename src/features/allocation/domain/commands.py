@@ -11,6 +11,12 @@ class GetInvoice(Command):
     month: int
 
 @dataclass
+class GetInvoice(Command):
+    client_id: int
+    month: int
+
+
+@dataclass
 class CalculateInvoiceByConcept(Command):
     client_id: int
     month: int

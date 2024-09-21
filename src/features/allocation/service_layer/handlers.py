@@ -146,18 +146,25 @@ def calculate_invoice(cmd: commands.GetInvoice, uow: unit_of_work.SqlAlchemyUnit
         return {
             "EA": {
                 "concept": "Energía Activa (EA)",
+                "sum": consumption_sum,
+                "CU": tariffs['CU'],
                 "value": energy_active
             },
             "EC": {
                 "concept": "Comercialización de Excedentes de Energía (EC)",
+                "sum": injection_sum,
+                "C": tariffs['C'],
                 "value": energy_commercialization
             },
             "EE1": {
                 "concept": "Excedentes de Energía tipo 1 (EE1)",
+                "sum": ee1_sum,
+                "-CU": -tariffs['CU'],
                 "value": ee1_value
             },
             "EE2": {
                 "concept": "Excedentes de Energía tipo 2 (EE2)",
+                "sum": ee2_sum,
                 "value": ee2_value
             },
         }
