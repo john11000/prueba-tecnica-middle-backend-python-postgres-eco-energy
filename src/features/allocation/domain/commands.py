@@ -3,17 +3,16 @@ from datetime import date
 from typing import Optional
 from dataclasses import dataclass
 
+from src.features.allocation.api.schema import ConceptEnum
+
 class Command:
     pass
-@dataclass
-class GetInvoice(Command):
-    client_id: int
-    month: int
 
 @dataclass
 class GetInvoice(Command):
     client_id: int
     month: int
+    concept: Optional[ConceptEnum] = None
 
 
 @dataclass

@@ -88,7 +88,7 @@ def get_consumption(session: Session, id_service: int, start_date=None, end_date
     }
 
 
-def get_injection_sum(session: Session, id_service: int, start_date=None, end_date=None, showDetails=False):
+def get_injection(session: Session, id_service: int, start_date=None, end_date=None, showDetails=False):
     base_query = """
         SELECT COALESCE(SUM(i.value), 0) AS total_injection
         FROM records r
@@ -167,37 +167,41 @@ def calculate_ee2_value(session: Session, ee2_sum: float, start_date: datetime, 
 def calculate_invoice(cmd: commands.GetInvoice, uow: unit_of_work.SqlAlchemyUnitOfWork) -> dict:
     with uow:
         session = uow.session
-        try:
-            cdi = cmd.client_id
-            month = datetime(cmd.month // 100, cmd.month % 100, 1)
-            start_date = month.replace(day=1)
-            end_date = (month.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        cdi = cmd.client_id
+        concept = cmd.concept
+        month = datetime(cmd.month // 100, cmd.month % 100, 1)
+        start_date = month.replace(day=1)
+        end_date = (month.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
-            service = get_service(session, cdi)
-            if not service:
-                raise InvalidValueError("No se encontró el servicio para el cliente especificado.")
+        service = get_service(session, cdi)
+        if not service:
+            raise InvalidValueError("No se encontró el servicio para el cliente especificado.")
 
-            tariffs = get_tariff_for_service(session, service.id_market, cdi, service.voltage_level)
+        tariffs = get_tariff_for_service(session, service.id_market, cdi, service.voltage_level)
+        consumption = get_consumption(session, service.id_service, start_date, end_date)
+        injection = get_injection(session, service.id_service, start_date, end_date)
 
-            consumption = get_consumption(session, service.id_service, start_date, end_date)
-            injection = get_injection_sum(session, service.id_service, start_date, end_date)
-            consumption_sum = consumption['total_consumption']
-            injection_sum = injection['total_injection']
-            ea = calculate_energy_active(consumption_sum, tariffs)
-            ec = calculate_energy_commercialization(injection_sum, tariffs)
-            ee1 = calculate_ee1(consumption_sum, injection_sum, tariffs)
-            ee2 = calculate_ee2(session, injection_sum, consumption_sum, start_date, end_date)
+        consumption_sum = consumption['total_consumption']
+        injection_sum = injection['total_injection']
 
-            uow.commit()  # Commit transaction if all calculations succeed
-            return {
-                "EA": ea,
-                "EC": ec,
-                "EE1": ee1,
-                "EE2": ee2,
-            }
-        except Exception:
-            uow.rollback()  # Rollback the transaction on any error
-            raise
+        results = {}
+        if concept in {'EA', 'EC', 'EE1', 'EE2'}:
+            if concept == 'EA':
+                results['EA'] = calculate_energy_active(consumption_sum, tariffs)
+            elif concept == 'EC':
+                results['EC'] = calculate_energy_commercialization(injection_sum, tariffs)
+            elif concept == 'EE1':
+                results['EE1'] = calculate_ee1(consumption_sum, injection_sum, tariffs)
+            elif concept == 'EE2':
+                results['EE2'] = calculate_ee2(session, injection_sum, consumption_sum, start_date, end_date)
+        else:
+            results['EA'] = calculate_energy_active(consumption_sum, tariffs)
+            results['EC'] = calculate_energy_commercialization(injection_sum, tariffs)
+            results['EE1'] = calculate_ee1(consumption_sum, injection_sum, tariffs)
+            results['EE2'] = calculate_ee2(session, injection_sum, consumption_sum, start_date, end_date)
+
+        uow.commit()
+        return results
 
 def calculate_energy_active(consumption_sum: float, tariffs: dict) -> dict:
     energy_active = consumption_sum * tariffs['CU']
@@ -247,7 +251,7 @@ def get_client_statistics(cmd: commands.GetClientStatistics, uow: unit_of_work.S
                 raise InvalidValueError("No se encontró el servicio para el cliente especificado.")
 
             consumption_sum = get_consumption(session, service.id_service ,showDetails=show_details)
-            injection_sum = get_injection_sum(session, service.id_service, showDetails=show_details)
+            injection_sum = get_injection(session, service.id_service, showDetails=show_details)
 
             uow.commit()
             return {
@@ -257,35 +261,3 @@ def get_client_statistics(cmd: commands.GetClientStatistics, uow: unit_of_work.S
         except Exception:
             uow.rollback()
             raise
-
-def calculate_independent_concept(cmd: commands.CalculateInvoiceByConcept, uow: unit_of_work.SqlAlchemyUnitOfWork):
-    with uow:
-        session = uow.session
-
-        cdi = cmd.client_id
-        service = get_service(session, cdi)
-        if not service:
-            raise InvalidValueError("No se encontró el servicio para el cliente especificado.")
-
-        month = datetime(cmd.month // 100, cmd.month % 100, 1)
-        start_date = month.replace(day=1)
-        end_date = (month.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-
-        tariffs = get_tariff_for_service(session, service.id_market, cdi, service.voltage_level)
-
-        consumption = get_consumption(session, service.id_service, start_date, end_date)
-        injection = get_injection_sum(session, service.id_service, start_date, end_date)
-        consumption_sum = consumption['total_consumption']
-        injection_sum = injection['total_injection']
-        concept = cmd.concept
-
-        if concept == 'EA':
-            return calculate_energy_active(consumption_sum, tariffs)
-        elif concept == 'EC':
-            return calculate_energy_commercialization(injection_sum, tariffs)
-        elif concept == 'EE1':
-            return calculate_ee1(consumption_sum, injection_sum, tariffs)
-        elif concept == 'EE2':
-            return calculate_ee2(session, injection_sum, consumption_sum, start_date, end_date)
-        else:
-            raise InvalidValueError("Concepto no válido.")
