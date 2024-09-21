@@ -9,6 +9,7 @@ from src.features.allocation.service_layer import messagebus, unit_of_work
 
 
 view_router = APIRouter()
+uow = unit_of_work.SqlAlchemyUnitOfWork()
 
 
 """GET /client-statistics/{client_id}: Proporciona estadísticas de consumo e
@@ -16,7 +17,6 @@ inyección para un cliente"""
 @view_router.get("/client-statistics/{client_id}")
 def client_statistics(client_id: int):
     try:
-        uow = unit_of_work.SqlAlchemyUnitOfWork()
         cmd = commands.GetClientStatistics(client_id)
         results = messagebus.handle(cmd, uow)
         return {
@@ -32,7 +32,6 @@ GET /system-load: Muestra la carga del sistema por hora basada en los datos
 de consumo
 """
 @view_router.get("/system-load")
-def system_load() -> List[Message]:
-    uow = unit_of_work.SqlAlchemyUnitOfWork()
+def system_load():
     results = views.system_load(uow)
     return results

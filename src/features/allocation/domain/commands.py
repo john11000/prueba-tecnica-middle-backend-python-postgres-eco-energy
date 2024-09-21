@@ -25,3 +25,7 @@ class CalculateInvoiceByConcept(Command):
 @dataclass
 class GetClientStatistics(Command):
     client_id: int
+
+@dataclass
+class GetSystemLoad(Command):
+    pass
