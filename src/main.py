@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.features.allocation.infrastructure import adapter
 from src.core.settings import settings
@@ -12,13 +13,17 @@ app = FastAPI(
     docs_url="/",
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# add routers
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# start db mappers
 adapter.start_mappers()
-
 
 if __name__ == "__main__":
     uvicorn.run(app, port=8000, proxy_headers=True, log_level="debug")
