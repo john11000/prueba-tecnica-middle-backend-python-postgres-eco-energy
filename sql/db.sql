@@ -9,7 +9,7 @@ CREATE TABLE "services" (
 CREATE TABLE "records" (
   "id_record" SERIAL PRIMARY KEY,
   "id_service" INTEGER,
-  "record_timestamp" TIMESTAMP UNIQUE,  -- Añadir restricción única
+  "record_timestamp" TIMESTAMP UNIQUE,
   FOREIGN KEY ("id_service") REFERENCES "services" ("id_service")
 );
 
