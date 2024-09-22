@@ -10,6 +10,6 @@ class ConceptEnum(str, Enum):
     EE2 = "EE2"
     
 class ClientStatistics(BaseModel):
-    client_id: int
-    total_consumed: float
+    client_id: int = Field(..., example="400")
+    total_consumed: float 
     total_injected: float
