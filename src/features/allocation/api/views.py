@@ -38,3 +38,15 @@ def system_load():
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+"""
+GET /customers: Muestra todos los customers o cdi de la tabla services
+"""
+@view_router.get("/customers")
+def get_customers():
+    try:
+        results = views.get_customers(uow)
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

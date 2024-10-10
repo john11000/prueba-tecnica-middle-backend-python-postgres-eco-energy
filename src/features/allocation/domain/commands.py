@@ -2,8 +2,8 @@
 from datetime import date
 from typing import Optional
 from dataclasses import dataclass
-
-from src.features.allocation.api.schema import ConceptEnum
+from fastapi import UploadFile as FastAPIUploadFile
+from src.features.allocation.api.schema import ConceptEnum, EntitiesEnum
 
 class Command:
     pass
@@ -29,3 +29,8 @@ class GetClientStatistics(Command):
 @dataclass
 class GetSystemLoad(Command):
     pass
+
+@dataclass
+class UploadFile(Command):
+    fileToProcess: FastAPIUploadFile
+    to: Optional[EntitiesEnum] = None

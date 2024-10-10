@@ -261,3 +261,6 @@ def get_client_statistics(cmd: commands.GetClientStatistics, uow: unit_of_work.S
         except Exception:
             uow.rollback()
             raise
+
+def upload_report(cmd, uow):
+    pass

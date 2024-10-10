@@ -9,6 +9,14 @@ class ConceptEnum(str, Enum):
     EE1 = "EE1"
     EE2 = "EE2"
     
+class EntitiesEnum(str, Enum):
+    SERVICES = "services"
+    RECORDS = "records"
+    INJECTION = "Injection"
+    CONSUMPTION = "Consumption"
+    XM = "xm_data_hourly_per_agent"
+    TARIFFS = "tariffs"
+
 class ClientStatistics(BaseModel):
     client_id: int = Field(..., example="400")
     total_consumed: float 
