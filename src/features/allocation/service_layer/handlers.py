@@ -8,8 +8,8 @@ from src.features.allocation.service_layer import unit_of_work
 
 def get_tariff_for_service(session: Session, id_market: int, cdi: int, voltage_level: int) -> dict:
     tariff_query = text("""
-        SELECT "CU", "C"
-        FROM tariffs
+        SELECT cu , c
+        FROM tariffs t
         WHERE id_market = :id_market AND voltage_level = :voltage_level
         """ + ("""AND cdi = :cdi""" if voltage_level not in (2, 3) else "") + """
         LIMIT 1
@@ -22,7 +22,7 @@ def get_tariff_for_service(session: Session, id_market: int, cdi: int, voltage_l
     result = session.execute(tariff_query, params).fetchone()
 
     if result:
-        return {'CU': result.CU, 'C': result.C}
+        return {'CU': result.cu, 'C': result.c}
     else:
         raise InvalidValueError("No se encontraron tarifas para el servicio especificado.")
 
