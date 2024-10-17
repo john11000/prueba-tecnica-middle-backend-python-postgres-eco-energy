@@ -12,15 +12,15 @@ view_router = APIRouter()
 uow = unit_of_work.SqlAlchemyUnitOfWork()
 
 
-"""GET /client-statistics/{client_id}: Proporciona estadísticas de consumo e
-inyección para un cliente"""
-@view_router.get("/client-statistics/{client_id}")
-def client_statistics(client_id: int, show_details: bool = Query(False)):
+"""GET /client-statistics/{id_service}: Proporciona estadísticas de consumo e
+inyección para un cliente pasando el id service"""
+@view_router.get("/client-statistics/{id_service}")
+def client_statistics(id_service: int, show_details: bool = Query(False)):
     try:
-        cmd = commands.GetClientStatistics(client_id, show_details)
+        cmd = commands.GetClientStatistics(id_service, show_details)
         results = messagebus.handle(cmd, uow)
         return {
-            "client_id": client_id,
+            "client_id": id_service,
             "results": results,
         }
     except Exception as e:
@@ -39,14 +39,3 @@ def system_load():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-"""
-GET /customers: Muestra todos los customers o cdi de la tabla services
-"""
-@view_router.get("/customers")
-def get_customers():
-    try:
-        results = views.get_customers(uow)
-        return results
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

@@ -12,11 +12,17 @@ CREATE TABLE IF NOT exists "services" (
     UNIQUE (id_market, cdi, voltage_level)
 );
 
+
 CREATE TABLE IF NOT EXISTS "records" (
-    id_record INTEGER PRIMARY KEY DEFAULT nextval('records_id_record_seq'),
+    id_record SERIAL PRIMARY KEY,
     id_service INTEGER,
-    record_timestamp TIMESTAMP UNIQUE,
+    record_timestamp TIMESTAMP,
     FOREIGN KEY (id_service) REFERENCES "services" (id_service)
+);
+
+CREATE TABLE IF NOT EXISTS "xm_data_hourly_per_agent" (
+    record_timestamp TIMESTAMP PRIMARY KEY,
+    value FLOAT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "injection" (
@@ -78,30 +84,3 @@ BEFORE INSERT ON tariffs
 FOR EACH ROW
 EXECUTE FUNCTION ensure_service_exists();
 
-CREATE OR REPLACE FUNCTION update_if_exists()
-RETURNS TRIGGER AS $$
-BEGIN
-   
-    IF EXISTS (
-        SELECT 1 
-        FROM records 
-        WHERE record_timestamp = NEW.record_timestamp
-    ) THEN
-       
-        UPDATE records
-        SET id_service = NEW.id_service
-        WHERE record_timestamp = NEW.record_timestamp;
-
-      
-        RETURN NULL;
-    END IF;
-
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER before_insert_records
-BEFORE INSERT ON records
-FOR EACH ROW
-EXECUTE FUNCTION update_if_exists();

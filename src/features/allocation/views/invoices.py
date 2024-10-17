@@ -15,14 +15,3 @@ def system_load(uow: unit_of_work.SqlAlchemyUnitOfWork):
         """)
         results = session.execute(load_query).fetchall()
         return [{"timestamp": row.record_timestamp, "load": row.load} for row in results]
-
-def get_customers(uow: unit_of_work.SqlAlchemyUnitOfWork):
-    with uow:
-        session = uow.session
-        load_query = text("""
-            SELECT DISTINCT s.cdi
-            FROM services s
-            WHERE s.cdi IS NOT NULL;
-        """)
-        results = session.execute(load_query).fetchall()
-        return [{"customers": row.cdi } for row in results]

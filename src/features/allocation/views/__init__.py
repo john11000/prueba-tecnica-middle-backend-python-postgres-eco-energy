@@ -1,1 +1,1 @@
-from .invoices import system_load, get_customers
+from .invoices import system_load
