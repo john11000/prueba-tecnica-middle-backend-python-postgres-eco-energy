@@ -26,13 +26,13 @@ def get_tariff_for_service(session: Session, id_market: int, cdi: int, voltage_l
     else:
         raise InvalidValueError("No se encontraron tarifas para el servicio especificado.")
 
-def get_service(session: Session, cdi: int):
+def get_service(session: Session, id_service: int):
     service_query = text("""
-        SELECT id_service, id_market, voltage_level
+        SELECT id_service, id_market, voltage_level, cdi
         FROM services
-        WHERE cdi = :cdi
+        WHERE id_service = :id_service
     """)
-    return session.execute(service_query, {'cdi': cdi}).fetchone()
+    return session.execute(service_query, {'id_service': id_service}).fetchone()
 
 def get_consumption(session: Session, id_service: int, start_date=None, end_date=None, showDetails=False):
     base_query = """
@@ -54,7 +54,7 @@ def get_consumption(session: Session, id_service: int, start_date=None, end_date
     if start_date:
         conditions.append("r.record_timestamp >= :start_date")
     if end_date:
-        conditions.append("r.record_timestamp <= :end_date")
+        conditions.append("r.record_timestamp < :end_date")
     
     if conditions:
         base_query += " AND " + " AND ".join(conditions)
@@ -108,7 +108,7 @@ def get_injection(session: Session, id_service: int, start_date=None, end_date=N
     if start_date:
         conditions.append("r.record_timestamp >= :start_date")
     if end_date:
-        conditions.append("r.record_timestamp <= :end_date")
+        conditions.append("r.record_timestamp < :end_date")
     
     if conditions:
         base_query += " AND " + " AND ".join(conditions)
@@ -167,17 +167,18 @@ def calculate_ee2_value(session: Session, ee2_sum: float, start_date: datetime, 
 def calculate_invoice(cmd: commands.GetInvoice, uow: unit_of_work.SqlAlchemyUnitOfWork) -> dict:
     with uow:
         session = uow.session
-        cdi = cmd.client_id
+        id_service = cmd.id_service
         concept = cmd.concept
         month = datetime(cmd.month // 100, cmd.month % 100, 1)
         start_date = month.replace(day=1)
-        end_date = (month.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        end_date = (month.replace(day=1, month=month.month + 1) if month.month < 12 else month.replace(day=1, year=month.year + 1, month=1))
 
-        service = get_service(session, cdi)
+
+        service = get_service(session, id_service)
         if not service:
-            raise InvalidValueError("No se encontró el servicio para el cliente especificado.")
+            raise InvalidValueError(f"No se encontró el servicio {id_service}")
 
-        tariffs = get_tariff_for_service(session, service.id_market, cdi, service.voltage_level)
+        tariffs = get_tariff_for_service(session, service.id_market, service.cdi, service.voltage_level)
         consumption = get_consumption(session, service.id_service, start_date, end_date)
         injection = get_injection(session, service.id_service, start_date, end_date)
 
@@ -185,6 +186,12 @@ def calculate_invoice(cmd: commands.GetInvoice, uow: unit_of_work.SqlAlchemyUnit
         injection_sum = injection['total_injection']
 
         results = {}
+        results['cdi'] = service.cdi
+        results['id_market'] = service.id_market
+        results['dates'] = {
+            start_date,
+            end_date
+        }
         if concept in {'EA', 'EC', 'EE1', 'EE2'}:
             if concept == 'EA':
                 results['EA'] = calculate_energy_active(consumption_sum, tariffs)
@@ -244,9 +251,9 @@ def get_client_statistics(cmd: commands.GetClientStatistics, uow: unit_of_work.S
     with uow:
         session = uow.session
         try:
-            cdi = cmd.client_id
+            id_service = cmd.id_service
             show_details = cmd.show_details
-            service = get_service(session, cdi)
+            service = get_service(session, id_service)
             if not service:
                 raise InvalidValueError("No se encontró el servicio para el cliente especificado.")
 
