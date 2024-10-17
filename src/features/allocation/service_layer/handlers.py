@@ -54,7 +54,7 @@ def get_consumption(session: Session, id_service: int, start_date=None, end_date
     if start_date:
         conditions.append("r.record_timestamp >= :start_date")
     if end_date:
-        conditions.append("r.record_timestamp <= :end_date")
+        conditions.append("r.record_timestamp < :end_date")
     
     if conditions:
         base_query += " AND " + " AND ".join(conditions)
@@ -108,7 +108,7 @@ def get_injection(session: Session, id_service: int, start_date=None, end_date=N
     if start_date:
         conditions.append("r.record_timestamp >= :start_date")
     if end_date:
-        conditions.append("r.record_timestamp <= :end_date")
+        conditions.append("r.record_timestamp < :end_date")
     
     if conditions:
         base_query += " AND " + " AND ".join(conditions)
@@ -171,7 +171,8 @@ def calculate_invoice(cmd: commands.GetInvoice, uow: unit_of_work.SqlAlchemyUnit
         concept = cmd.concept
         month = datetime(cmd.month // 100, cmd.month % 100, 1)
         start_date = month.replace(day=1)
-        end_date = (month.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        end_date = (month.replace(day=1, month=month.month + 1) if month.month < 12 else month.replace(day=1, year=month.year + 1, month=1))
+
 
         service = get_service(session, id_service)
         if not service:
@@ -187,6 +188,10 @@ def calculate_invoice(cmd: commands.GetInvoice, uow: unit_of_work.SqlAlchemyUnit
         results = {}
         results['cdi'] = service.cdi
         results['id_market'] = service.id_market
+        results['dates'] = {
+            start_date,
+            end_date
+        }
         if concept in {'EA', 'EC', 'EE1', 'EE2'}:
             if concept == 'EA':
                 results['EA'] = calculate_energy_active(consumption_sum, tariffs)
